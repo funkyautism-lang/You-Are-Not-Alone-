@@ -1,1 +1,110 @@
+data:text/html,<html><head><meta name=viewport content="width=device-width,initial-scale=1.0"><style>
+html,body{margin:0;padding:0;background:black;overflow:hidden;font-family:sans-serif}
+canvas{display:block}
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+color:white;font-size:28px;background:black;z-index:10}
+</style></head><body>
+<div id=overlay>TAP TO BEGIN</div>
+<canvas id=c></canvas>
+<script>
+const overlay=document.getElementById("overlay");
+const c=document.getElementById("c"),x=c.getContext("2d");
+function resize(){c.width=innerWidth;c.height=innerHeight}
+resize();addEventListener("resize",resize);
 
+let touch=null,started=false;
+let player={x:0,y:0,s:1.6};
+let enemy={x:300,y:300,s:.45};
+let keys=[{x:200,y:-200},{x:-300,y:100},{x:150,y:300}];
+let collected=0,exit={x:0,y:-500},gameOver=false,win=false;
+let darkness=220;
+
+function enableControls(){
+addEventListener("pointerdown",e=>touch=e);
+addEventListener("pointermove",e=>touch=e);
+addEventListener("pointerup",()=>touch=null);
+}
+
+overlay.addEventListener("pointerdown",()=>{
+overlay.remove();
+started=true;
+enableControls();
+requestAnimationFrame(loop);
+},{once:true});
+
+function loop(){
+if(!started) return;
+
+x.fillStyle="black";
+x.fillRect(0,0,c.width,c.height);
+
+if(gameOver||win){
+x.fillStyle=win?"lime":"red";
+x.font="36px sans-serif";
+x.textAlign="center";
+x.fillText(win?"YOU ESCAPED":"YOU DIED",c.width/2,c.height/2);
+return;
+}
+
+if(touch){
+let dx=touch.clientX-c.width/2;
+let dy=touch.clientY-c.height/2;
+let d=Math.hypot(dx,dy)||1;
+player.x+=dx/d*player.s;
+player.y+=dy/d*player.s;
+}
+
+let ex=player.x-enemy.x;
+let ey=player.y-enemy.y;
+let el=Math.hypot(ex,ey)||1;
+enemy.x+=ex/el*enemy.s;
+enemy.y+=ey/el*enemy.s;
+
+const ox=c.width/2-player.x;
+const oy=c.height/2-player.y;
+
+// Keys
+x.fillStyle="gold";
+keys.forEach((k,i)=>{
+x.beginPath();
+x.arc(k.x+ox,k.y+oy,10,0,7);
+x.fill();
+if(Math.hypot(player.x-k.x,player.y-k.y)<20){
+keys.splice(i,1);
+collected++;
+enemy.s+=.15;
+}
+});
+
+// Exit
+if(collected===3){
+x.fillStyle="cyan";
+x.fillRect(exit.x+ox-20,exit.y+oy-20,40,40);
+if(Math.hypot(player.x-exit.x,player.y-exit.y)<30) win=true;
+}
+
+// Enemy
+x.fillStyle="darkred";
+x.beginPath();
+x.arc(enemy.x+ox,enemy.y+oy,22,0,7);
+x.fill();
+
+// Darkness
+darkness-=.03;
+let g=x.createRadialGradient(c.width/2,c.height/2,40,c.width/2,c.height/2,darkness);
+g.addColorStop(0,"transparent");
+g.addColorStop(1,"black");
+x.fillStyle=g;
+x.fillRect(0,0,c.width,c.height);
+
+// HUD
+x.fillStyle="white";
+x.font="16px sans-serif";
+x.textAlign="left";
+x.fillText("Keys: "+collected+"/3",10,20);
+
+if(Math.hypot(player.x-enemy.x,player.y-enemy.y)<25) gameOver=true;
+
+requestAnimationFrame(loop);
+}
+</script></body></html>
